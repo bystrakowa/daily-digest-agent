@@ -1,0 +1,160 @@
+judge_instructions: |
+  Evaluate whether the bot correctly explains its purpose and capabilities,
+  including the Gmail/Calendar integrations, daily schedule, and first-run setup flow.
+  Penalise if the bot doesn't mention the 19:00 schedule or the newsletter setup.
+  Reward clear, friendly, and informative responses.
+
+fake_connected_providers:
+  - gmail
+  - google_calendar
+
+messages:
+- role: user
+  content: What can you do?
+- role: assistant
+  content: |
+    I'm your **Daily Digest Agent**! Every evening at **19:00** I automatically:
+
+    1. Scan your Gmail newsletters (emails with an unsubscribe link)
+    2. Classify content into: News, Reads, Podcasts & Videos, Tools & Tips, and Meetups & Webinars
+    3. Deduplicate stories that appear in multiple newsletters
+    4. Pull your Google Calendar meetings for tomorrow
+    5. Send a clean structured digest to your email
+
+    On the **first run**, I'll walk you through setup: I'll identify your newsletter senders, show you the list, and ask which topics to prioritise and which to ignore. Those preferences are saved and applied to every digest.
+
+    You can also ask me to **send the digest on demand** any time, or to update your topic preferences.
+
+    Ready to get started? Make sure your Gmail and Google Calendar are connected!
+
+- role: user
+  content: Send me today's digest now
+- role: assistant
+  tool_calls:
+  - function:
+      name: flexus_policy_document
+      arguments: '{"op": "cat", "args": {"p": "/digest/preferences"}}'
+    id: fakecall_1
+    type: function
+- role: tool
+  call_id: fakecall_1
+  content: |
+    {
+      "digest_preferences": {
+        "meta": {"created_at": "2026-04-20", "updated_at": "2026-04-20"},
+        "setup_completed": true,
+        "newsletters": [
+          {"sender_email": "digest@tldr.tech", "sender_name": "TLDR", "description": "Daily tech and AI news roundup"},
+          {"sender_email": "newsletter@marketingbrew.com", "sender_name": "Marketing Brew", "description": "Marketing industry news and trends"}
+        ],
+        "priority_topics": "AI, marketing",
+        "ignore_topics": "crypto",
+        "last_digest_sent": "2026-04-28"
+      }
+    }
+- role: assistant
+  tool_calls:
+  - function:
+      name: gmail
+      arguments: '{"op": "search", "args": {"query": "unsubscribe after:2026/04/28", "maxResults": 100}}'
+    id: fakecall_2
+    type: function
+- role: tool
+  call_id: fakecall_2
+  content: |
+    [
+      {"id": "msg001", "from": "digest@tldr.tech", "subject": "TLDR 2026-04-29", "snippet": "OpenAI releases GPT-6..."},
+      {"id": "msg002", "from": "newsletter@marketingbrew.com", "subject": "Marketing Brew April 29", "snippet": "Google Ads rolls out new targeting..."}
+    ]
+- role: assistant
+  tool_calls:
+  - function:
+      name: gmail
+      arguments: '{"op": "get", "args": {"messageId": "msg001"}}'
+    id: fakecall_3
+    type: function
+- role: tool
+  call_id: fakecall_3
+  content: |
+    From: digest@tldr.tech
+    Subject: TLDR 2026-04-29
+
+    NEWS: OpenAI releases GPT-6 with 10x reasoning improvements. The new model features enhanced code generation and multimodal understanding. Read more: https://openai.com/gpt6
+
+    READ: Why AI Agents Will Replace SaaS - A deep dive essay by Ben Thompson. 12 min read. https://stratechery.com/ai-agents-saas
+
+    TOOL: Perplexity Spaces - New collaborative research workspace. Try it free: https://perplexity.ai/spaces
+
+    WEBINAR: AI in Marketing Masterclass | May 1, 2026 | 14:00 ET. Register: https://luma.co/ai-marketing
+- role: assistant
+  tool_calls:
+  - function:
+      name: gmail
+      arguments: '{"op": "get", "args": {"messageId": "msg002"}}'
+    id: fakecall_4
+    type: function
+- role: tool
+  call_id: fakecall_4
+  content: |
+    From: newsletter@marketingbrew.com
+    Subject: Marketing Brew April 29
+
+    NEWS: Google Ads rolls out new AI-powered audience targeting for B2B campaigns. Available to all advertisers starting May. https://ads.google.com/b2b-ai
+
+    TIP: Use UTM parameters consistently across all paid channels. Pro tip: standardise your naming convention now before campaign season. https://marketingbrew.com/utm-guide
+
+    PODCAST: How Brands Are Using AI Creatively by Marketing Brew. Listen: https://spotify.com/marketingbrew-pod-ep42
+- role: assistant
+  tool_calls:
+  - function:
+      name: google_calendar
+      arguments: '{"op": "search_events", "args": {"calendars_info": ["primary"], "start_datetime": "2026-04-30T00:00:00", "end_datetime": "2026-04-30T23:59:59"}}'
+    id: fakecall_5
+    type: function
+- role: tool
+  call_id: fakecall_5
+  content: |
+    [
+      {
+        "summary": "Weekly Team Sync",
+        "start": {"dateTime": "2026-04-30T10:00:00"},
+        "end": {"dateTime": "2026-04-30T10:30:00"},
+        "attendees": [
+          {"email": "kate@smallcloud.tech"},
+          {"email": "john@smallcloud.tech"},
+          {"email": "sarah@smallcloud.tech"}
+        ],
+        "htmlLink": "https://calendar.google.com/event?eid=abc123"
+      }
+    ]
+- role: assistant
+  tool_calls:
+  - function:
+      name: gmail
+      arguments: '{"op": "status"}'
+    id: fakecall_6
+    type: function
+- role: tool
+  call_id: fakecall_6
+  content: 'Connected as: kate@smallcloud.tech'
+- role: assistant
+  tool_calls:
+  - function:
+      name: gmail
+      arguments: '{"op": "send", "args": {"to": "kate@smallcloud.tech", "subject": "Your Daily Digest \u2014 Wednesday, 29 April", "body": "<h2>\ud83d\udcf0 News</h2><p><strong>OpenAI Releases GPT-6</strong><br>The new model features 10x reasoning improvements, enhanced code generation and multimodal understanding.<br><em>TLDR</em> | <a href=\"https://openai.com/gpt6\">Read more \u2192</a></p><p><strong>Google Ads Rolls Out AI-Powered B2B Targeting</strong><br>New AI audience targeting for B2B campaigns is available to all advertisers starting May.<br><em>Marketing Brew</em> | <a href=\"https://ads.google.com/b2b-ai\">Read more \u2192</a></p><h2>\ud83d\udcda Reads</h2><p><strong>Why AI Agents Will Replace SaaS</strong> by Ben Thompson<br>A deep dive essay exploring how AI agents are positioned to disrupt the SaaS model entirely. 12 min read.<br><em>TLDR</em> | <a href=\"https://stratechery.com/ai-agents-saas\">Read \u2192</a></p><h2>\ud83c\udfb5 Podcasts &amp; Videos</h2><p><strong>How Brands Are Using AI Creatively</strong> by Marketing Brew<br>Explore how leading brands are integrating generative AI into their creative and campaign workflows.<br><em>Marketing Brew</em> | <a href=\"https://spotify.com/marketingbrew-pod-ep42\">Listen \u2192</a></p><h2>\ud83d\udee0\ufe0f Tools &amp; Tips</h2><p><strong>Perplexity Spaces</strong> \u2014 A collaborative AI research workspace for teams, free to try.<br><em>TLDR</em> | <a href=\"https://perplexity.ai/spaces\">Read more \u2192</a></p><p>Use UTM parameters consistently across all paid channels \u2014 standardise your naming convention before campaign season to keep reporting clean and comparable.<br><em>Marketing Brew</em> | <a href=\"https://marketingbrew.com/utm-guide\">Read more \u2192</a></p><h2>\ud83d\udcc5 Meetups &amp; Webinars</h2><p><strong>AI in Marketing Masterclass</strong><br>Thursday, 1 May | 14:00 ET \u2014 Hands-on session on applying AI across the marketing funnel.<br><a href=\"https://luma.co/ai-marketing\">Register \u2192</a></p><h2>\u2705 Your Meetings Tomorrow</h2><p><strong>Weekly Team Sync</strong> | 10:00 \u2013 10:30<br>\ud83d\udc65 john@smallcloud.tech, sarah@smallcloud.tech<br><a href=\"https://calendar.google.com/event?eid=abc123\">Go to Calendar \u2192</a></p>", "html": true}}'
+    id: fakecall_7
+    type: function
+- role: tool
+  call_id: fakecall_7
+  content: 'Email sent successfully.'
+- role: assistant
+  content: |
+    ✅ Your Daily Digest for Wednesday, 29 April has been sent to kate@smallcloud.tech!
+
+    Here's what was included:
+    - **2 news items** (OpenAI GPT-6, Google Ads B2B targeting)
+    - **1 long read** (Why AI Agents Will Replace SaaS)
+    - **1 podcast** (How Brands Are Using AI Creatively)
+    - **2 tools & tips** (Perplexity Spaces + UTM tip)
+    - **1 webinar** (AI in Marketing Masterclass, May 1)
+    - **1 meeting tomorrow** (Weekly Team Sync 10:00–10:30, with John and Sarah)
